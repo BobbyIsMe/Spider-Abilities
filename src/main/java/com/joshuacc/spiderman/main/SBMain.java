@@ -101,6 +101,8 @@ public class SBMain extends PluginBase implements Listener {
 		{
 			if(event.getCause() == DamageCause.FALL)
 			{
+				Item item = ((Player) event.getEntity()).getInventory().getBoots();
+				if(item.hasCompoundTag() && item.getNamedTag().contains("multiplier"))
 				event.setDamage(event.getDamage()/2F);
 			}
 		}
