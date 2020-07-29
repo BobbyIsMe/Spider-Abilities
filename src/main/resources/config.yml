@@ -1,0 +1,44 @@
+# A for-fun plugin to simulate Spider abilities.
+# Plugin made by Joshua CC.
+
+# Placeholders available for messages: %LEVEL% %ENCHANT%
+
+# =========== IN-GAME SETTINGS ===========
+
+# Settings you can change for the enchantment
+# Includes the enchantment name, maximum radius, maximum multiplier, and vine decay's delay
+
+Spider-Climb Enchantment: "&2&lSpider Climb %LEVEL%"
+
+High-Jump Enchantment: "&6&lHigh Jump %LEVEL%"
+
+Maximum Radius: 5
+
+Maximum Multiplier: 3
+
+Decay Seconds: 3
+
+# =========== COMMAND RESPONSES ===========
+
+# Messages for response on executing the command
+# Permission: spider.ability
+
+Successful Message: "&aYou have enchanted your boots with %ENCHANT%!"
+
+Has-Enchanted Message: "&cYou have already enchanted this item with %ENCHANT%!"
+
+Incorrect-Item-Chestplate Message: "&cYou must have a chestplate in your hand!"
+
+Incorrect-Item-Boots Message: "&cYou must have boots in your hand!"
+
+Incorrect-Item-Sword Message: "&cYou must have sword in your hand!"
+
+Incorrect-Number Message: "&cNot a number!"
+
+Little-Arguements Message: "&cToo little arguements!"
+
+Higher-Radius Message: "&cGiven radius is higher than maximum!"
+
+Lower-Radius Message: "&cMust be a higher number than 0!"
+
+No-Permission Message: "&cYou don't have permission to use this command!"
