@@ -1,28 +1,37 @@
 package com.joshuacc.spiderman.main;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Iterator;
 
 import cn.nukkit.Player;
 import cn.nukkit.Server;
 import cn.nukkit.block.Block;
+import cn.nukkit.entity.Entity;
+import cn.nukkit.entity.EntityCreature;
 import cn.nukkit.event.EventHandler;
 import cn.nukkit.event.Listener;
+import cn.nukkit.event.entity.EntityDamageByEntityEvent;
 import cn.nukkit.event.entity.EntityDamageEvent;
 import cn.nukkit.event.entity.EntityDamageEvent.DamageCause;
+import cn.nukkit.event.entity.EntitySpawnEvent;
 import cn.nukkit.event.player.PlayerJumpEvent;
 import cn.nukkit.event.player.PlayerMoveEvent;
 import cn.nukkit.item.Item;
 import cn.nukkit.level.Location;
 import cn.nukkit.level.Sound;
 import cn.nukkit.level.particle.DestroyBlockParticle;
+import cn.nukkit.level.particle.FloatingTextParticle;
 import cn.nukkit.level.particle.GenericParticle;
 import cn.nukkit.level.particle.HappyVillagerParticle;
 import cn.nukkit.level.particle.Particle;
 import cn.nukkit.math.BlockFace;
 import cn.nukkit.math.Vector3;
+import cn.nukkit.nbt.tag.CompoundTag;
 import cn.nukkit.plugin.PluginBase;
+import cn.nukkit.potion.Effect;
 import cn.nukkit.scheduler.Task;
+import cn.nukkit.scheduler.TaskHandler;
 
 public class SBMain extends PluginBase implements Listener {
 
@@ -73,7 +82,6 @@ public class SBMain extends PluginBase implements Listener {
 		}
 	}
 
-
 	@EventHandler
 	public void onHit(PlayerJumpEvent event)
 	{
@@ -84,28 +92,184 @@ public class SBMain extends PluginBase implements Listener {
 			int dis = getRadius("multiplier", boots);
 			if(dis != 0)
 			{
-				if(player.isOnGround())
+				if(player.isOnGround() && getEntityInSight(player, getDistance(player)) == null)
 				{
 					addParticle(player, Particle.TYPE_EVAPORATION, 40);
 					player.getLevel().addSound(player, Sound.MOB_WITHER_SHOOT, 1, 2);
-					player.setMotion(player.getDirectionVector().multiply(dis+.5));
+					player.setMotion(player.getDirectionVector().multiply(getBoost(dis, 1.2)));
 				}
 			}
 		}
 	}
-	
+
+	@EventHandler
+	public void onJump(PlayerJumpEvent event)
+	{
+		Player player = event.getPlayer();
+		Item boots = player.getInventory().getHelmet();
+		if(player.isSneaking())
+		{
+			int dis = getRadius("distance", boots);
+			if(dis != 0)
+			{
+				int radius = getRadius("distance", player.getInventory().getHelmet());
+				if(radius != 0)
+				{
+					EntityCreature target = getEntityInSight(player, radius*5);
+					if(target != null && player.hasEffect(Effect.POISON) && player.getEffect(Effect.POISON).getDuration() >= 10)
+					{
+						addParticle(player, Particle.TYPE_REDSTONE, 20);
+						player.getLevel().addSound(player, Sound.MOB_SPIDER_SAY);
+						player.setMotion(player.getDirectionVector().multiply(3.5));
+
+						TaskHandler t = Server.getInstance().getScheduler().scheduleRepeatingTask(new Task() {
+
+							@Override
+							public void onRun(int arg0) 
+							{
+								for(Entity ent : player.getLevel().getNearbyEntities(player.getBoundingBox().grow(1.5, 1.5, 1.5)))
+								{
+									if(ent == target && player.hasEffect(Effect.POISON) && player.getEffect(Effect.POISON).getDuration() >= 10)
+									{
+										if(!ent.namedTag.contains("web") && player.getInventory().getItemInHand().getId() == Item.STRING && getRadius("length", player.getInventory().getLeggings()) != 0)
+										{
+											Item item = player.getInventory().getItemInHand();
+											item.setCount(item.getCount()-5);
+											player.getInventory().setItemInHand(item);
+											ent.namedTag.putDouble("web", 5);
+											createWebTrap(player, ent);
+										}
+										Vector3 l = target.getDirectionVector().multiply(-1).add(target);
+										player.teleport(new Location(l.x, target.y, l.z, target.yaw, target.pitch, player.getLevel()));
+										EntityDamageByEntityEvent damage = new EntityDamageByEntityEvent(player, target, DamageCause.ENTITY_ATTACK, 6);
+										damage.setKnockBack(1.3F);
+										target.attack(damage);
+										addParticle(target.add(0, target.getEyeHeight(), 0), Particle.TYPE_REDSTONE, 30);
+										target.addEffect(Effect.getEffect(Effect.POISON).setDuration(10 * 20).setAmplifier(4));
+										target.addEffect(Effect.getEffect(Effect.BLINDNESS).setDuration(5 * 20).setVisible(false));
+										target.addEffect(Effect.getEffect(Effect.NAUSEA).setDuration(10 * 20).setVisible(false));
+										target.addEffect(Effect.getEffect(Effect.SLOWNESS).setDuration(10 * 20).setVisible(false));
+										if(target instanceof Player)
+											target.getLevel().addSound(target, Sound.MOB_ELDERGUARDIAN_CURSE, 1, 1, (Player) target);
+										player.getLevel().addSound(player, Sound.MOB_SPIDER_DEATH);
+										player.removeEffect(Effect.POISON);
+										this.cancel();
+									}
+								}
+							}				
+						}, 1);
+
+						Server.getInstance().getScheduler().scheduleDelayedTask(new Task() {
+
+							@Override
+							public void onRun(int arg0) 
+							{
+								if(!t.isCancelled())
+									t.cancel();
+							}
+						}, 20);
+					}
+				}
+			}
+		}
+	}
+
 	@EventHandler
 	public void onFall(EntityDamageEvent event)
 	{
 		if(event.getEntity() instanceof Player)
 		{
-			if(event.getCause() == DamageCause.FALL)
-			{
-				Item item = ((Player) event.getEntity()).getInventory().getBoots();
-				if(item.hasCompoundTag() && item.getNamedTag().contains("multiplier"))
+			Player player = (Player) event.getEntity();
+			if(event.getCause() == DamageCause.FALL && getRadius("multiplier", player.getInventory().getBoots()) != 0)
 				event.setDamage(event.getDamage()/2F);
-			}
+
+			else if(event.getCause() == DamageCause.MAGIC && player.hasEffect(Effect.POISON) && getRadius("distance", player.getInventory().getHelmet()) != 0)
+				event.setCancelled(true);
 		}
+	}
+
+	@EventHandler
+	public void onSpawn(EntitySpawnEvent event)
+	{
+		createWebTrap(null, event.getEntity());
+	}
+
+	private void createWebTrap(Player player, Entity e)
+	{
+		CompoundTag tag = e.namedTag;
+		if(tag.contains("web"))
+		{
+			double x = e.x;
+			double y = e.y;
+			double z = e.z;
+			double wave = e.getWidth()+.1;
+			final double radius = wave;
+			FloatingTextParticle particle = new FloatingTextParticle(e.add(0, e.getHeight()+.5, 0), "10.0");
+			e.getLevel().addParticle(particle);
+			e.getLevel().addSound(e, Sound.RANDOM_ANVIL_USE);
+			DecimalFormat df = new DecimalFormat("#.##");
+			Server.getInstance().getScheduler().scheduleRepeatingTask(new Task() {
+
+				int yaw = 5;
+				int i = 0;
+
+				@Override
+				public void onRun(int arg0) 
+				{
+					yaw = yaw +=5;
+					if(yaw > 360)
+						yaw = 5;
+					double angle = 2 * Math.PI * i / 30;
+					Location point = e.clone().add(radius * Math.sin(angle), e.getHeight()-.3, radius * Math.cos(angle));
+					e.getLevel().addParticle(new GenericParticle(point, Particle.TYPE_EVAPORATION));
+					i++;
+
+					double sec = tag.getDouble("web");
+					if(player != null)
+					{
+						int length = getRadius("length", player.getInventory().getLeggings());
+						int s = getLength(length);
+						Item item = player.getInventory().getItemInHand();
+						if(item.getId() == Item.STRING && player.distance(e) <= 3 && length != 0 && s >= sec &&
+								item.getCount() >= 5)
+						{
+							item.setCount(item.getCount()-5);
+							player.getLevel().addSound(player, Sound.BLOCK_SWEET_BERRY_BUSH_PICK);
+							player.getInventory().setItemInHand(item);
+							tag.putDouble("web", sec+5.0);
+						}
+					}
+
+					tag.putDouble("web", tag.getDouble("web")-.10);
+					e.teleport(new Location(x, y, z, yaw, 0));
+					e.getLevel().addSound(e, Sound.MOB_SPIDER_STEP);
+					particle.setTitle(df.format(sec));
+
+					if(e == null || sec <= 0 || !e.isAlive() || e.getLocation().getLevelBlock().getId() == Block.WATER)
+					{
+						tag.remove("web");
+						particle.setTitle("");
+						particle.setInvisible(true);
+						e.getLevel().addSound(e, Sound.RANDOM_ANVIL_BREAK);
+						this.cancel();
+					}
+				}
+
+			}, 1);
+		}
+	}
+
+	private int getLength(int num)
+	{
+		return (int) getBoost(num, 50);
+	}
+	
+	private double getBoost(int num, double add)
+	{
+		double i = 0;
+		for(int x = 0; x < num; x++)
+			i = i + add;
+		return i;
 	}
 
 	private void destroyVines(Player player, ArrayList<Location> blocks) 
@@ -171,7 +335,7 @@ public class SBMain extends PluginBase implements Listener {
 		}
 	}
 
-	private void addParticle(Player player, int p, int size)
+	private void addParticle(Location player, int p, int size)
 	{
 		Particle particle = new GenericParticle(player, p);
 		for (int x = 0; x < size; x++) {
@@ -190,11 +354,51 @@ public class SBMain extends PluginBase implements Listener {
 		return (Math.random() * range) + (min <= max ? min : max);
 	}
 
+	private int getDistance(Player player)
+	{
+		Item item = player.getInventory().getHelmet();
+		if(item.hasCompoundTag() && item.getNamedTag().contains("distance") && player.hasEffect(Effect.POISON))
+			return item.getNamedTag().getInt("distance")*5;
+		else
+			return 0;
+	}
+
 	public static int getRadius(String tag, Item item)
 	{
 		if(item.hasCompoundTag() && item.getNamedTag().contains(tag))
 			return item.getNamedTag().getInt(tag);
 		else
 			return 0;
+	}
+
+	private EntityCreature getEntityInSight(Player player, int distance)
+	{
+		EntityCreature inSight = null;
+		for(Entity nearbyEntity : player.getLevel().getNearbyEntities(player.getBoundingBox().grow(distance, distance, distance)))
+		{
+			if(nearbyEntity instanceof EntityCreature)
+			{
+				if(nearbyEntity != player)
+				{
+					for(Vector3 position : traverse(player, nearbyEntity.distance(player)+.5, 1))
+					{
+						if(nearbyEntity.boundingBox.isVectorInside(position))
+						{
+							inSight = (EntityCreature) nearbyEntity;
+							return inSight;
+						}
+					}
+				}
+			}
+		}
+		return inSight;
+	}
+
+	private ArrayList<Vector3> traverse(Player player, double blocksAway, double accuracy) {
+		ArrayList<Vector3> positions = new ArrayList<>();
+		for (double d = 0; d <= blocksAway; d += accuracy) {
+			positions.add(player.clone().add(0, 2, 0).add(player.getDirectionVector().clone().multiply(d)));
+		}
+		return positions;
 	}
 }

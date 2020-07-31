@@ -21,7 +21,7 @@ public class SpiderVinesCommand extends Command {
 		this.setPermission("spider.ability");
 		this.commandParameters.put("default", new CommandParameter[] {
 				new CommandParameter("ability", new String[] {
-						"spider-climb", "high-jump"	
+						"spider-climb", "high-jump", "venom-bite", "web-shoot"
 				}),
 				new CommandParameter("value", CommandParamType.INT, false)
 		});
@@ -40,7 +40,7 @@ public class SpiderVinesCommand extends Command {
 			switch(args.length)
 			{
 			case 0: 
-			case 1: player.sendMessage(format("Little-Arguements Message")); break;
+			case 1: player.sendMessage(formatResponse("Little-Arguements Message")); break;
 			case 2:
 				try {
 					int value = Integer.parseInt(args[1]);
@@ -53,14 +53,20 @@ public class SpiderVinesCommand extends Command {
 					case "high-jump":
 						addEnchantment(item, player, "multiplier", "Boots", value, item.isBoots());
 						break;
+					case "venom-bite":
+						addEnchantment(item, player, "distance", "Helmet", value, item.isHelmet());
+						break;
+					case "web-shoot":
+						addEnchantment(item, player, "length", "Leggings", value, item.isLeggings());
+						break;
 					}
 				} catch (Exception e) {
-					player.sendMessage(format("Incorrect-Number Message"));
+					player.sendMessage(formatResponse("Incorrect-Number Message"));
 				}
 				break;
 			}
 		} else 
-			player.sendMessage(format("No-Permission Message"));
+			player.sendMessage(formatResponse("No-Permission Message"));
 		return true;
 	}
 	
@@ -95,6 +101,10 @@ public class SpiderVinesCommand extends Command {
 			return config.getString("Spider-Climb Enchantment");
 		else if(tag == "multiplier")
 			return config.getString("High-Jump Enchantment");
+		else if(tag == "distance")
+			return config.getString("Venom-Bite Enchantment");
+		else if(tag == "length")
+			return config.getString("Web-Shoot Enchantment");
 		return  "";
 	}
 	

@@ -1,4 +1,4 @@
-name: SpiderMan
+name: Spider-Abilities
 main: com.joshuacc.spiderman.main.SBMain
 author: Joshua CC
 api: ["1.0.0"]
