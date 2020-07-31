@@ -258,7 +258,7 @@ public class SBMain extends PluginBase implements Listener {
 			}, 1);
 		}
 	}
-
+	
 	private int getLength(int num)
 	{
 		return (int) getBoost(num, 50);
@@ -358,7 +358,7 @@ public class SBMain extends PluginBase implements Listener {
 	{
 		Item item = player.getInventory().getHelmet();
 		if(item.hasCompoundTag() && item.getNamedTag().contains("distance") && player.hasEffect(Effect.POISON))
-			return item.getNamedTag().getInt("distance")*5;
+			return (int) getBoost(item.getNamedTag().getInt("distance"), 12);
 		else
 			return 0;
 	}
