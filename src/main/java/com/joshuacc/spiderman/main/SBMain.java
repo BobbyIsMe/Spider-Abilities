@@ -123,7 +123,7 @@ public class SBMain extends PluginBase implements Listener {
 						@Override
 						public void onRun(int arg0) 
 						{
-							for(Entity ent : player.getLevel().getNearbyEntities(player.getBoundingBox().grow(1.5, 1.5, 1.5)))
+							for(Entity ent : player.getLevel().getNearbyEntities(player.getBoundingBox().grow(1.5, 1.5, 1.5), player))
 							{
 								if(ent == target && player.hasEffect(Effect.POISON) && player.getEffect(Effect.POISON).getDuration() >= 10)
 								{
@@ -369,17 +369,14 @@ public class SBMain extends PluginBase implements Listener {
 	private EntityCreature getEntityInSight(Player player, int distance)
 	{
 		EntityCreature inSight = null;
-		for(Entity nearbyEntity : player.getLevel().getNearbyEntities(player.getBoundingBox().grow(distance, distance, distance)))
+		for(Entity nearbyEntity : player.getLevel().getNearbyEntities(player.getBoundingBox().grow(distance, distance, distance), player))
 		{
 			if(nearbyEntity instanceof EntityCreature)
 			{
-				if(nearbyEntity != player)
+				if(nearbyEntity.boundingBox.isVectorInside(distance(player, nearbyEntity.distance(player))))
 				{
-					if(nearbyEntity.boundingBox.isVectorInside(distance(player, nearbyEntity.distance(player))))
-					{
-						inSight = (EntityCreature) nearbyEntity;
-						return inSight;
-					}
+					inSight = (EntityCreature) nearbyEntity;
+					return inSight;
 				}
 			}
 		}
@@ -387,6 +384,6 @@ public class SBMain extends PluginBase implements Listener {
 	}
 
 	private Vector3 distance(Player player, double blocksAway) {
-		return player.add(0, 2, 0).add(player.getDirectionVector().multiply(blocksAway));
+		return player.add(0, player.getEyeHeight(), 0).add(player.getDirectionVector().multiply(blocksAway));
 	}
 }
