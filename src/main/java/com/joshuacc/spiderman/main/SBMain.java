@@ -106,69 +106,64 @@ public class SBMain extends PluginBase implements Listener {
 	public void onJump(PlayerJumpEvent event)
 	{
 		Player player = event.getPlayer();
-		Item boots = player.getInventory().getHelmet();
 		if(player.isSneaking())
 		{
-			int dis = getRadius("distance", boots);
-			if(dis != 0)
+			int radius = getDistance(player);
+			if(radius != 0)
 			{
-				int radius = getRadius("distance", player.getInventory().getHelmet());
-				if(radius != 0)
+				EntityCreature target = getEntityInSight(player, radius);
+				if(target != null && player.hasEffect(Effect.POISON) && player.getEffect(Effect.POISON).getDuration() >= 10)
 				{
-					EntityCreature target = getEntityInSight(player, radius*5);
-					if(target != null && player.hasEffect(Effect.POISON) && player.getEffect(Effect.POISON).getDuration() >= 10)
-					{
-						addParticle(player, Particle.TYPE_REDSTONE, 20);
-						player.getLevel().addSound(player, Sound.MOB_SPIDER_SAY);
-						player.setMotion(player.getDirectionVector().multiply(3.5));
+					addParticle(player, Particle.TYPE_REDSTONE, 20);
+					player.getLevel().addSound(player, Sound.MOB_SPIDER_SAY);
+					player.setMotion(player.getDirectionVector().multiply(3.5));
 
-						TaskHandler t = Server.getInstance().getScheduler().scheduleRepeatingTask(new Task() {
+					TaskHandler t = Server.getInstance().getScheduler().scheduleRepeatingTask(new Task() {
 
-							@Override
-							public void onRun(int arg0) 
+						@Override
+						public void onRun(int arg0) 
+						{
+							for(Entity ent : player.getLevel().getNearbyEntities(player.getBoundingBox().grow(1.5, 1.5, 1.5)))
 							{
-								for(Entity ent : player.getLevel().getNearbyEntities(player.getBoundingBox().grow(1.5, 1.5, 1.5)))
+								if(ent == target && player.hasEffect(Effect.POISON) && player.getEffect(Effect.POISON).getDuration() >= 10)
 								{
-									if(ent == target && player.hasEffect(Effect.POISON) && player.getEffect(Effect.POISON).getDuration() >= 10)
+									if(!ent.namedTag.contains("web") && player.getInventory().getItemInHand().getId() == Item.STRING && getRadius("length", player.getInventory().getLeggings()) != 0)
 									{
-										if(!ent.namedTag.contains("web") && player.getInventory().getItemInHand().getId() == Item.STRING && getRadius("length", player.getInventory().getLeggings()) != 0)
-										{
-											Item item = player.getInventory().getItemInHand();
-											item.setCount(item.getCount()-5);
-											player.getInventory().setItemInHand(item);
-											ent.namedTag.putDouble("web", 5);
-											createWebTrap(player, ent);
-										}
-										Vector3 l = target.getDirectionVector().multiply(-1).add(target);
-										player.teleport(new Location(l.x, target.y, l.z, target.yaw, target.pitch, player.getLevel()));
-										EntityDamageByEntityEvent damage = new EntityDamageByEntityEvent(player, target, DamageCause.ENTITY_ATTACK, 6);
-										damage.setKnockBack(1.3F);
-										target.attack(damage);
-										addParticle(target.add(0, target.getEyeHeight(), 0), Particle.TYPE_REDSTONE, 30);
-										target.addEffect(Effect.getEffect(Effect.POISON).setDuration(10 * 20).setAmplifier(4));
-										target.addEffect(Effect.getEffect(Effect.BLINDNESS).setDuration(5 * 20).setVisible(false));
-										target.addEffect(Effect.getEffect(Effect.NAUSEA).setDuration(10 * 20).setVisible(false));
-										target.addEffect(Effect.getEffect(Effect.SLOWNESS).setDuration(10 * 20).setVisible(false));
-										if(target instanceof Player)
-											target.getLevel().addSound(target, Sound.MOB_ELDERGUARDIAN_CURSE, 1, 1, (Player) target);
-										player.getLevel().addSound(player, Sound.MOB_SPIDER_DEATH);
-										player.removeEffect(Effect.POISON);
-										this.cancel();
+										Item item = player.getInventory().getItemInHand();
+										item.setCount(item.getCount()-5);
+										player.getInventory().setItemInHand(item);
+										ent.namedTag.putDouble("web", 5);
+										createWebTrap(player, ent);
 									}
+									Vector3 l = target.getDirectionVector().multiply(-1).add(target);
+									player.teleport(new Location(l.x, target.y, l.z, target.yaw, target.pitch, player.getLevel()));
+									EntityDamageByEntityEvent damage = new EntityDamageByEntityEvent(player, target, DamageCause.ENTITY_ATTACK, 6);
+									damage.setKnockBack(1.3F);
+									target.attack(damage);
+									addParticle(target.add(0, target.getEyeHeight(), 0), Particle.TYPE_REDSTONE, 30);
+									target.addEffect(Effect.getEffect(Effect.POISON).setDuration(10 * 20).setAmplifier(4));
+									target.addEffect(Effect.getEffect(Effect.BLINDNESS).setDuration(5 * 20).setVisible(false));
+									target.addEffect(Effect.getEffect(Effect.NAUSEA).setDuration(10 * 20).setVisible(false));
+									target.addEffect(Effect.getEffect(Effect.SLOWNESS).setDuration(10 * 20).setVisible(false));
+									if(target instanceof Player)
+										target.getLevel().addSound(target, Sound.MOB_ELDERGUARDIAN_CURSE, 1, 1, (Player) target);
+									player.getLevel().addSound(player, Sound.MOB_SPIDER_DEATH);
+									player.removeEffect(Effect.POISON);
+									this.cancel();
 								}
-							}				
-						}, 1);
-
-						Server.getInstance().getScheduler().scheduleDelayedTask(new Task() {
-
-							@Override
-							public void onRun(int arg0) 
-							{
-								if(!t.isCancelled())
-									t.cancel();
 							}
-						}, 20);
-					}
+						}				
+					}, 1);
+
+					Server.getInstance().getScheduler().scheduleDelayedTask(new Task() {
+
+						@Override
+						public void onRun(int arg0) 
+						{
+							if(!t.isCancelled())
+								t.cancel();
+						}
+					}, 20);
 				}
 			}
 		}
@@ -258,12 +253,12 @@ public class SBMain extends PluginBase implements Listener {
 			}, 1);
 		}
 	}
-	
+
 	private int getLength(int num)
 	{
 		return (int) getBoost(num, 50);
 	}
-	
+
 	private double getBoost(int num, double add)
 	{
 		double i = 0;
