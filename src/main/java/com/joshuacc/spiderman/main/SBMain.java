@@ -375,13 +375,10 @@ public class SBMain extends PluginBase implements Listener {
 			{
 				if(nearbyEntity != player)
 				{
-					for(Vector3 position : traverse(player, nearbyEntity.distance(player)+.5, 1))
+					if(nearbyEntity.boundingBox.isVectorInside(distance(player, nearbyEntity.distance(player))))
 					{
-						if(nearbyEntity.boundingBox.isVectorInside(position))
-						{
-							inSight = (EntityCreature) nearbyEntity;
-							return inSight;
-						}
+						inSight = (EntityCreature) nearbyEntity;
+						return inSight;
 					}
 				}
 			}
@@ -389,11 +386,7 @@ public class SBMain extends PluginBase implements Listener {
 		return inSight;
 	}
 
-	private ArrayList<Vector3> traverse(Player player, double blocksAway, double accuracy) {
-		ArrayList<Vector3> positions = new ArrayList<>();
-		for (double d = 0; d <= blocksAway; d += accuracy) {
-			positions.add(player.clone().add(0, 2, 0).add(player.getDirectionVector().clone().multiply(d)));
-		}
-		return positions;
+	private Vector3 distance(Player player, double blocksAway) {
+		return player.add(0, 2, 0).add(player.getDirectionVector().multiply(blocksAway));
 	}
 }
